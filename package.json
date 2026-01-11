@@ -1,0 +1,29 @@
+{
+  "name": "tinyworker",
+  "version": "0.0.0",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/tinyworker.umd.cjs",
+  "module": "./dist/tinyworker.js",
+  "exports": {
+    ".": {
+      "import": "./dist/tinyworker.js",
+      "require": "./dist/tinyworker.umd.cjs"
+    }
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "vite": "npm:rolldown-vite@7.2.5",
+    "vitest": "4.0.16",
+    "zod": "4.3.5"
+  },
+  "overrides": {
+    "vite": "npm:rolldown-vite@7.2.5"
+  }
+}
