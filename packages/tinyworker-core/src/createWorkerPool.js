@@ -39,7 +39,7 @@ export function createWorkerPool(mod, config) {
     const runnerIndex = pool.findIndex((it) => it.available());
 
     if (runnerIndex >= 0) {
-      return pool[runnerIndex].postMessage(task);
+      return pool[runnerIndex].postMessage(task).then((it) => msg.payload(it));
     }
 
     queue.push(task);
@@ -48,7 +48,7 @@ export function createWorkerPool(mod, config) {
       const unsub = completed.subscribe((someMessage) => {
         if (msg.sameId(task, someMessage)) {
           unsub();
-          resolve(someMessage);
+          resolve(msg.payload(someMessage));
         }
       });
     });

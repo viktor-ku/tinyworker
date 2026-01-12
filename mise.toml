@@ -1,0 +1,10 @@
+[tasks."core:build"]
+run = [
+  "bun run --cwd ./packages/tinyworker-core build"
+]
+
+[tasks."core-demo:dev"]
+run = [
+  "rm -rf ./demo/core-demo/node_modules/.vite",
+  "bun run -i --cwd ./demo/core-demo dev"
+]
