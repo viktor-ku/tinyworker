@@ -1,16 +1,16 @@
 {
-  "name": "tinyworker",
+  "name": "@tinyworker/core",
   "version": "0.0.0",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "./index.d.ts"
   ],
-  "main": "./dist/tinyworker.umd.cjs",
-  "module": "./dist/tinyworker.js",
+  "module": "./dist/tinyworker.umd.cjs",
   "exports": {
     ".": {
-      "import": "./dist/tinyworker.js",
-      "require": "./dist/tinyworker.umd.cjs"
+      "import": "./dist/tinyworker.umd.cjs",
+      "types": "./index.d.ts"
     }
   },
   "scripts": {
