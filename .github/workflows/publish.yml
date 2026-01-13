@@ -9,9 +9,17 @@ jobs:
   publish:
     name: publish
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # required for npm Trusted Publishing (OIDC)
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '25'
+
       - run: bun i --cwd ./packages/tinyworker-core/ --frozen-lockfile
       - run: bun run --cwd ./packages/tinyworker-core build
-      - run: bun publish --cwd ./packages/tinyworker-core --access public --tolerate-republish --frozen-lockfile
+      - run: npm publish
+        working-directory: ./packages/tinyworker-core
