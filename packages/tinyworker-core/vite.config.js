@@ -6,7 +6,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   build: {
-    modulePreload: { polyfill: false },
+    modulePreload: {
+      polyfill: false,
+    },
     lib: {
       formats: ["es", "umd"],
       entry: resolve(__dirname, "src/lib.js"),
@@ -25,19 +27,6 @@ export default defineConfig({
         unresolvedEntry: true,
         unresolvedImport: true,
       },
-      external: ["zod"],
-      output: {
-        cleanDir: true,
-        globals: {
-          zod: "zod",
-        },
-      },
     },
-  },
-  resolve: {
-    extensions: [".js"],
-  },
-  worker: {
-    format: "es",
   },
 });

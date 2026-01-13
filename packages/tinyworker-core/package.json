@@ -8,7 +8,8 @@
   ],
   "exports": {
     ".": {
-      "import": "./src/lib.js",
+      "import": "./dist/tinyworker.js",
+      "require": "./dist/tinyworker.umd.cjs",
       "types": "./index.d.ts"
     }
   },
