@@ -42,8 +42,7 @@ async function ensureCleanGit() {
 }
 
 async function ensureTagDoesNotExist(tag) {
-  // exit code 0 if exists
-  const res = await $`git rev-parse -q --verify refs/tags/${tag}`.quiet();
+  const res = await $`git rev-parse -q --verify refs/tags/${tag}`.nothrow();
   if (res.exitCode === 0) die(`Tag already exists: ${tag}`);
 }
 
