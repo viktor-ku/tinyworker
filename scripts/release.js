@@ -36,7 +36,7 @@ async function ensureCleanGit() {
   const res = await $`git status --porcelain`.quiet();
   if (res.exitCode !== 0)
     die("Failed to run git status. Are you in a git repo?");
-  if (res.stdout.trim().length !== 0) {
+  if (res.text().trim().length !== 0) {
     die("Working tree is not clean. Commit/stash your changes first.");
   }
 }
