@@ -1,6 +1,9 @@
 {
   "name": "tinyworker-root",
   "version": "0.0.0",
+  "repository": {
+    "url": "https://github.com/viktor-ku/tinyworker"
+  },
   "workspaces": [
     "packages/*",
     "demo/*"
