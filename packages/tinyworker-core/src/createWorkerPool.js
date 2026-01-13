@@ -1,6 +1,6 @@
 import { WorkerRunner } from "./WorkerRunner.js";
 import { extractUrl } from "./utils.js";
-import { createObserver } from "./createObserver.js";
+import { Channel } from "./channel.js";
 import * as msg from "./message.js";
 
 export function createWorkerPool(mod, config) {
@@ -11,7 +11,7 @@ export function createWorkerPool(mod, config) {
   const workerOptions = { type: "module" };
 
   const queue = [];
-  const completed = createObserver([]);
+  const completed = new Channel();
 
   for (let i = 0, len = maxWorkers; i < len; i += 1) {
     const runner = new WorkerRunner(workerUrl, {
@@ -21,7 +21,7 @@ export function createWorkerPool(mod, config) {
 
     pool.push(runner);
 
-    runner.available.subscribe((online) => {
+    runner.available.recv(({ next: online }) => {
       if (online) {
         const task = queue.shift();
 
@@ -36,7 +36,7 @@ export function createWorkerPool(mod, config) {
 
   function acceptJob(prop, input) {
     const task = msg.Com(input);
-    const runnerIndex = pool.findIndex((it) => it.available());
+    const runnerIndex = pool.findIndex((it) => it.available.value());
 
     if (runnerIndex >= 0) {
       return pool[runnerIndex].postMessage(task).then((it) => msg.payload(it));

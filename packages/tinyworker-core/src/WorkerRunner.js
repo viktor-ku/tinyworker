@@ -1,28 +1,30 @@
-import { createObserver } from "./createObserver.js";
+import { Channel } from "./channel.js";
 import * as msg from "./message.js";
 
 export class WorkerRunner {
   constructor(workerUrl, config) {
-    this.available = createObserver(true);
-    this.channel = createObserver([]);
+    this.available = new Channel(true);
+    this.channel = new Channel();
 
     this.worker = new Worker(workerUrl, config.workerOptions);
     this.worker.addEventListener("message", this.recv.bind(this));
   }
 
   recv(e) {
-    this.available.notify(true);
-    this.channel.notify(e);
+    this.available.tx(true);
+    this.channel.tx(e);
   }
 
   postMessage(message) {
-    this.available.notify(false);
+    this.available.tx(false);
 
     return new Promise((resolve) => {
-      const unsub = this.channel.subscribe((e) => {
-        if (msg.sameId(message, e.data)) {
-          unsub();
-          resolve(e.data);
+      this.channel.recv(({ next, ack }) => {
+        const otherMessage = next.data;
+
+        if (msg.sameId(message, otherMessage)) {
+          ack();
+          resolve(otherMessage);
         }
       });
 
