@@ -27,7 +27,7 @@ export function createWorkerPool(mod, config) {
 
         if (task) {
           runner.postMessage(task).then((result) => {
-            completed.notify(result);
+            completed.tx(result);
           });
         }
       }
@@ -45,10 +45,10 @@ export function createWorkerPool(mod, config) {
     queue.push(task);
 
     return new Promise((resolve) => {
-      const unsub = completed.subscribe((someMessage) => {
-        if (msg.sameId(task, someMessage)) {
-          unsub();
-          resolve(msg.payload(someMessage));
+      completed.recv(({ next, ack }) => {
+        if (msg.sameId(task, next)) {
+          ack();
+          resolve(msg.payload(next));
         }
       });
     });
