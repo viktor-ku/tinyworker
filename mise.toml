@@ -14,7 +14,43 @@ run = [
   "bun run --cwd ./packages/tinyworker-core test --run"
 ]
 
+[tasks."core:typecheck"]
+run = [
+  "bun run --cwd ./packages/tinyworker-core typecheck"
+]
+
 [tasks."core-demo:e2e"]
 run = [
   "bun run --cwd ./demo/core-demo test:e2e"
+]
+
+[tasks."core-demo-react:dev"]
+run = [
+  "rm -rf ./demo/core-demo-react/node_modules/.vite",
+  "bun run -i --cwd ./demo/core-demo-react dev"
+]
+
+[tasks."core-demo-react:e2e"]
+run = [
+  "bun run --cwd ./demo/core-demo-react test:e2e"
+]
+
+[tasks."core-demo-vanilla:dev"]
+run = [
+  "rm -rf ./demo/core-demo-vanilla/node_modules/.vite",
+  "bun run -i --cwd ./demo/core-demo-vanilla dev"
+]
+
+[tasks."core-demo-vanilla:e2e"]
+run = [
+  "bun run --cwd ./demo/core-demo-vanilla test:e2e"
+]
+
+# All three demos (Solid, React, vanilla), one after another: each run rebuilds
+# packages/tinyworker-core/dist.
+[tasks."demos:e2e"]
+run = [
+  "bun run --cwd ./demo/core-demo test:e2e",
+  "bun run --cwd ./demo/core-demo-react test:e2e",
+  "bun run --cwd ./demo/core-demo-vanilla test:e2e"
 ]

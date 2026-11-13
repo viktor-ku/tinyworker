@@ -2,11 +2,18 @@ import { Channel } from "./channel.js";
 import * as msg from "./message.js";
 
 export class WorkerRunner {
-  constructor(workerUrl, config) {
+  /**
+   * @param source a Worker to drive, or the URL of one to create with
+   * `config.workerOptions`.
+   */
+  constructor(source, config) {
     this.available = new Channel(true);
     this.channel = new Channel();
 
-    this.worker = new Worker(workerUrl, config.workerOptions);
+    this.worker =
+      typeof source === "string" || source instanceof URL
+        ? new Worker(source, config.workerOptions)
+        : source;
     this.worker.addEventListener("message", this.recv.bind(this));
   }
 
