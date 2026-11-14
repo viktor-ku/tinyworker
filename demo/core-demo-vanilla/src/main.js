@@ -3,14 +3,9 @@ import { createWorkerPool } from "@tinyworker/core";
 
 // No framework and no TypeScript: plain JavaScript and the DOM.
 //
-// `spawn` is what makes a production build work: the bundler sees
-// `new Worker(new URL(...))` and builds worker.js as a bundle of its own.
-// The import() is never called. In plain JavaScript it still tells the editor
-// what `pool` can do.
-const pool = createWorkerPool(() => import("./worker.js"), {
-  spawn: () =>
-    new Worker(new URL("./worker.js", import.meta.url), { type: "module" }),
-});
+// The tinyworker() plugin in vite.config.js builds worker.js as a bundle of
+// its own, so this works in a production build too.
+const pool = createWorkerPool(() => import("./worker.js"));
 
 const heading = document.querySelector("h1");
 const input = document.querySelector("input");

@@ -7,13 +7,18 @@
   "type": "module",
   "files": [
     "dist",
-    "./index.d.ts"
+    "./index.d.ts",
+    "plugin"
   ],
   "exports": {
     ".": {
       "import": "./dist/tinyworker.js",
       "require": "./dist/tinyworker.umd.cjs",
       "types": "./index.d.ts"
+    },
+    "./vite": {
+      "types": "./plugin/vite.d.ts",
+      "default": "./plugin/vite.js"
     }
   },
   "scripts": {
@@ -21,6 +26,9 @@
     "build": "vite build",
     "test": "vitest",
     "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "magic-string": "^0.30.21"
   },
   "devDependencies": {
     "@vitest/browser-playwright": "4.0.16",

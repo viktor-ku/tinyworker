@@ -23,9 +23,12 @@ type PoolConfig = {
   /**
    * Creates one worker; the pool calls it once for each worker it runs.
    *
-   * Write the `new Worker(new URL(..., import.meta.url))` expression out in
-   * full, right here: that is the form a bundler such as Vite recognises and
-   * builds as a separate worker bundle.
+   * With Vite, use the `tinyworker()` plugin from `@tinyworker/core/vite`
+   * instead: it adds `spawn` for you, so the worker path is written once.
+   *
+   * Without the plugin, write the `new Worker(new URL(..., import.meta.url))`
+   * expression out in full, right here: that is the form bundlers such as
+   * Vite and webpack 5 recognise and build as a separate worker bundle.
    *
    * ```ts
    * const pool = createWorkerPool(() => import("./worker"), {
@@ -37,10 +40,10 @@ type PoolConfig = {
    * With `spawn`, the first argument only gives the pool its type. It is never
    * called.
    *
-   * Without `spawn`, the pool reads the worker URL out of the first argument's
-   * source text. A bundler then builds the worker as a lazy chunk of the app,
-   * which does not run in a worker, so always pass `spawn` in an app that is
-   * built for production.
+   * Without `spawn` or the plugin, the pool reads the worker URL out of the
+   * first argument's source text. A bundler then builds the worker as a lazy
+   * chunk of the app, which loads the app when it runs as a worker, so this
+   * only works in development.
    */
   spawn?: (() => Worker) | undefined;
 };

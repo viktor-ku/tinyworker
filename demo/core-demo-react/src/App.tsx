@@ -2,13 +2,9 @@ import { createWorkerPool } from "@tinyworker/core";
 import { useEffect, useState } from "react";
 import { numberToDouble } from "./schema";
 
-// `spawn` is what makes a production build work: the bundler sees
-// `new Worker(new URL(...))` and builds worker.ts as a bundle of its own.
-// The import() only gives `pool` its type; it is never called.
-const pool = createWorkerPool(() => import("./worker"), {
-  spawn: () =>
-    new Worker(new URL("./worker.ts", import.meta.url), { type: "module" }),
-});
+// The tinyworker() plugin in vite.config.ts builds worker.ts as a bundle of
+// its own, so this works in a production build too.
+const pool = createWorkerPool(() => import("./worker"));
 
 export function App() {
   const [text, setText] = useState("2");

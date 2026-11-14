@@ -21,6 +21,8 @@
   },
   "files": [
     "./index.d.ts",
-    "./tests/types/spawn.types.ts"
+    "./plugin/vite.d.ts",
+    "./tests/types/spawn.types.ts",
+    "./tests/types/plugin.types.ts"
   ]
 }
