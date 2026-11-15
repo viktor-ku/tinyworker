@@ -16,9 +16,13 @@
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noEmit": true
   },
   "files": [
-    "./index.d.ts"
+    "./index.d.ts",
+    "./plugin/vite.d.ts",
+    "./tests/types/spawn.types.ts",
+    "./tests/types/plugin.types.ts"
   ]
 }

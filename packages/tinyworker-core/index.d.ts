@@ -18,9 +18,42 @@ export function createWorkerFn<I = z.ZodAny, O = z.ZodVoid>(
 };
 
 type PoolConfig = {
+  /** How many workers the pool runs. Defaults to 2. */
   workers?: number;
+  /**
+   * Creates one worker; the pool calls it once for each worker it runs.
+   *
+   * With Vite, use the `tinyworker()` plugin from `@tinyworker/core/vite`
+   * instead: it adds `spawn` for you, so the worker path is written once.
+   *
+   * Without the plugin, write the `new Worker(new URL(..., import.meta.url))`
+   * expression out in full, right here: that is the form bundlers such as
+   * Vite and webpack 5 recognise and build as a separate worker bundle.
+   *
+   * ```ts
+   * const pool = createWorkerPool(() => import("./worker"), {
+   *   spawn: () =>
+   *     new Worker(new URL("./worker.ts", import.meta.url), { type: "module" }),
+   * });
+   * ```
+   *
+   * With `spawn`, the first argument only gives the pool its type. It is never
+   * called.
+   *
+   * Without `spawn` or the plugin, the pool reads the worker URL out of the
+   * first argument's source text. A bundler then builds the worker as a lazy
+   * chunk of the app, which loads the app when it runs as a worker, so this
+   * only works in development.
+   */
+  spawn?: (() => Worker) | undefined;
 };
 
+/**
+ * Creates a pool of workers that all run the module `mod` imports, and returns
+ * an object with that module's functions; calling one runs it in a worker.
+ *
+ * @param mod `() => import("./worker")`. Gives the pool its type.
+ */
 export function createWorkerPool<T>(
   mod: () => T,
   config?: PoolConfig,
