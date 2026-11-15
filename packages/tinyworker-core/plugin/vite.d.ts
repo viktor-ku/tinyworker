@@ -11,15 +11,7 @@ export interface TinyworkerPlugin {
     handler(
       code: string,
       id: string,
-    ): Promise<{
-      code: string;
-      map: {
-        version: number;
-        sources: string[];
-        names: string[];
-        mappings: string;
-      } | null;
-    } | null>;
+    ): Promise<{ code: string; map: null } | null>;
   };
 }
 

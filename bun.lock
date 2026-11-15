@@ -54,9 +54,6 @@
     "packages/tinyworker-core": {
       "name": "@tinyworker/core",
       "version": "0.1.5",
-      "dependencies": {
-        "magic-string": "^0.30.21",
-      },
       "devDependencies": {
         "@vitest/browser-playwright": "4.0.16",
         "playwright": "1.62.0",

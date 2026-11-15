@@ -38,9 +38,9 @@ export function tinyworker() {
           this.warn(it.message, it.pos);
         }
 
-        return result.code === null
-          ? null
-          : { code: result.code, map: result.map };
+        // map: null says the code kept its lines, so earlier source maps
+        // still hold; see rewrite.js.
+        return result.code === null ? null : { code: result.code, map: null };
       },
     },
   };

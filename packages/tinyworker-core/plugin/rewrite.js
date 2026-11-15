@@ -6,12 +6,17 @@
 //
 // Kept free of any bundler API so it can be tested on its own: `parse` and
 // `resolve` come from the plugin context.
+//
+// No source map is produced, so the package needs no dependencies. Instead,
+// every line stays where it was: the edits add no line breaks and keep the
+// ones in the code they replace. Only columns after an edit on the line of a
+// `createWorkerPool` call move.
 import path from "node:path";
-import MagicString from "magic-string";
 
 export const PACKAGE = "@tinyworker/core";
 const POOL = "createWorkerPool";
 const COMMENTS = /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
+const LINE_BREAKS = /\r\n|[\n\r\u2028\u2029]/g;
 
 /**
  * @param {string} code JavaScript, after TypeScript and JSX are compiled away.
@@ -20,7 +25,7 @@ const COMMENTS = /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
  * @param {(code: string) => any} options.parse Returns an ESTree Program.
  * @param {(specifier: string, importer: string) => Promise<string | null>} options.resolve
  *   Returns the file a specifier points to, or null when it can't be resolved.
- * @returns {Promise<null | { code: string | null, map: object | null, warnings: { message: string, pos?: number }[] }>}
+ * @returns {Promise<null | { code: string | null, warnings: { message: string, pos?: number }[] }>}
  *   null when there is nothing to change and nothing to warn about; `code` is
  *   null when there are only warnings.
  */
@@ -35,7 +40,6 @@ export async function rewritePoolCalls(code, { importer, parse, resolve }) {
   } catch {
     return {
       code: null,
-      map: null,
       warnings: [
         {
           message: `could not parse ${cleanId(importer)}, so its ${POOL} calls were not rewritten. List the tinyworker plugin after the plugins that compile this file.`,
@@ -56,9 +60,10 @@ export async function rewritePoolCalls(code, { importer, parse, resolve }) {
     }
   });
 
-  const s = new MagicString(code);
+  /** @type {{ start: number, end: number, text: string }[]} */
+  const edits = [];
+  const insert = (at, text) => edits.push({ start: at, end: at, text });
   const warnings = [];
-  let changed = false;
 
   for (const call of calls) {
     const args = call.arguments;
@@ -99,8 +104,10 @@ export async function rewritePoolCalls(code, { importer, parse, resolve }) {
     const url = JSON.stringify(workerPath(importer, resolved, specifier));
     const spawn = `spawn: () => new Worker(new URL(${url}, import.meta.url), { type: "module" })`;
 
-    // The import() would still be built into a lazy chunk nobody loads.
-    s.overwrite(mod.start, mod.end, "undefined");
+    // The import() would still be built into a lazy chunk nobody loads. Its
+    // line breaks stay, so the lines after it keep their numbers.
+    const breaks = code.slice(mod.start, mod.end).match(LINE_BREAKS) ?? [];
+    edits.push({ start: mod.start, end: mod.end, text: `undefined${breaks.join("")}` });
 
     if (config === undefined) {
       // Before the call's own ")", not after `mod`: a parser that drops
@@ -109,27 +116,40 @@ export async function rewritePoolCalls(code, { importer, parse, resolve }) {
       // and that ")" there are only ")"s, comments and a trailing comma.
       const close = call.end - 1;
       const tail = code.slice(mod.end, close).replace(COMMENTS, "");
-      s.appendLeft(close, `${tail.includes(",") ? " " : ", "}{ ${spawn} }`);
+      insert(close, `${tail.includes(",") ? " " : ", "}{ ${spawn} }`);
     } else if (config.type === "ObjectExpression") {
       // First, so a property the caller wrote still has the last word.
-      s.appendRight(config.start + 1, ` ${spawn},`);
+      insert(config.start + 1, ` ${spawn},`);
     } else {
-      s.prependRight(config.start, `{ ${spawn}, ...(`);
-      s.appendLeft(config.end, `) }`);
+      insert(config.start, `{ ${spawn}, ...(`);
+      insert(config.end, `) }`);
     }
-
-    changed = true;
   }
 
-  if (!changed && warnings.length === 0) {
+  if (edits.length === 0 && warnings.length === 0) {
     return null;
   }
 
   return {
-    code: changed ? s.toString() : null,
-    map: changed ? s.generateMap({ hires: "boundary", source: importer }) : null,
+    code: edits.length === 0 ? null : applyEdits(code, edits),
     warnings,
   };
+}
+
+/**
+ * Applies edits that don't overlap, last first so earlier offsets stay valid.
+ * An insertion at the end of a replaced range sorts first, so it lands after
+ * the replacement.
+ */
+function applyEdits(code, edits) {
+  let out = code;
+  const sorted = [...edits].sort((a, b) => b.start - a.start || b.end - a.end);
+
+  for (const { start, end, text } of sorted) {
+    out = out.slice(0, start) + text + out.slice(end);
+  }
+
+  return out;
 }
 
 /** The local names `createWorkerPool` is imported under, by name or namespace. */

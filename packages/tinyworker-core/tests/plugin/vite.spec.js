@@ -2,8 +2,9 @@
 // small app whose worker shares a module with it (tests/plugin/fixtures/app).
 // The demos (demo/*) run the same in browsers, built with Vite and Rollup;
 // this runs on the Vite this package is built with, which uses Rolldown.
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { build, createServer } from "vite";
+import { build, createServer, parseAst } from "vite";
 import { describe, expect, it } from "vitest";
 import { tinyworker } from "../../plugin/vite.js";
 
@@ -22,13 +23,14 @@ function config(plugins, logger) {
   };
 }
 
-async function buildApp(entry, plugins, logger) {
+async function buildApp(entry, plugins, logger, options = {}) {
   const result = await build({
     ...config(plugins, logger),
     build: {
       write: false,
       minify: false,
       rollupOptions: { input: `${root}${entry}` },
+      ...options,
     },
   });
   const files = result.output;
@@ -39,6 +41,46 @@ async function buildApp(entry, plugins, logger) {
       (it) => it.type === "asset" && it.fileName.startsWith("assets/worker-"),
     ),
   };
+}
+
+/**
+ * The source file and 1-based line that a 1-based line of generated code maps
+ * to, read from the first segment of that line in a version 3 source map.
+ */
+function originalLine(map, line) {
+  const BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const state = [0, 0, 0, 0]; // column, source, original line, original column
+  const lines = map.mappings.split(";");
+
+  for (let i = 0; i < line; i += 1) {
+    state[0] = 0;
+    for (const segment of lines[i].split(",").filter(Boolean)) {
+      let field = 0;
+      let value = 0;
+      let shift = 0;
+      for (const char of segment) {
+        const digit = BASE64.indexOf(char);
+        value += (digit & 31) << shift;
+        shift += 5;
+        if ((digit & 32) === 0) {
+          const signed = value & 1 ? -(value >>> 1) : value >>> 1;
+          if (field < 4) state[field] += signed;
+          field += 1;
+          value = 0;
+          shift = 0;
+        }
+      }
+      if (i === line - 1) {
+        return { source: map.sources[state[1]], line: state[2] + 1 };
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function lineOf(code, text) {
+  return code.slice(0, code.indexOf(text)).split("\n").length;
 }
 
 function recordingLogger() {
@@ -91,6 +133,28 @@ describe("production build", () => {
     expect(app.code).not.toMatch(/import\(\s*["']\.\/worker/);
   });
 
+  it("keeps the app's source map right, line for line", async () => {
+    const logger = recordingLogger();
+    const { chunks } = await buildApp("main.js", [tinyworker()], logger, {
+      sourcemap: true,
+    });
+    const [app] = chunks;
+    const source = await readFile(`${root}main.js`, "utf8");
+
+    // A transform without a map would get "Sourcemap is likely to be incorrect".
+    expect(logger.warnings.filter((it) => /source ?map/i.test(it))).toEqual([]);
+
+    for (const text of ["createWorkerPool(void 0", "document.title = greeting"]) {
+      const original = text.startsWith("createWorkerPool")
+        ? "createWorkerPool("
+        : text;
+      expect(originalLine(app.map, lineOf(app.code, text)), text).toEqual({
+        source: expect.stringMatching(/(^|\/)main\.js$/),
+        line: lineOf(source, original),
+      });
+    }
+  });
+
   it("warns about a pool call it can't rewrite, naming the plugin and the file", async () => {
     const logger = recordingLogger();
     await buildApp("dynamic.js", [tinyworker()], logger);
@@ -105,6 +169,31 @@ describe("production build", () => {
     await expect(
       buildApp("missing.js", [tinyworker()], recordingLogger()),
     ).rejects.toThrow('cannot find the worker module "./missing-worker.js"');
+  });
+});
+
+describe("transform hook", () => {
+  it("returns map: null, which tells the bundler every line kept its place", async () => {
+    // Without a map field, Rollup warns "Sourcemap is likely to be incorrect"
+    // when source maps are on; Rolldown doesn't, so this is checked here.
+    const context = {
+      parse: parseAst,
+      resolve: async () => ({ id: `${root}worker.js` }),
+      warn: () => {},
+      error: (message) => {
+        throw new Error(message);
+      },
+    };
+    const code = await readFile(`${root}main.js`, "utf8");
+
+    const result = await tinyworker().transform.handler.call(
+      context,
+      code,
+      `${root}main.js`,
+    );
+
+    expect(result).toStrictEqual({ code: expect.any(String), map: null });
+    expect(result.code).toContain("spawn: () => new Worker(");
   });
 });
 

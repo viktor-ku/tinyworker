@@ -300,10 +300,83 @@ describe("warns about a pool call it can't rewrite, and leaves it alone", () => 
   });
 });
 
-describe("source map", () => {
-  it("maps the rewritten code back to the importer", async () => {
-    const { map } = await rewrite(`${header}createWorkerPool(() => import("./worker"));`);
-    expect(map.sources).toEqual([importer]);
-    expect(map.mappings).not.toBe("");
+// The plugin returns no source map (so the package needs no dependencies):
+// it tells the bundler the code kept its lines. That only holds if no edit
+// adds or removes a line break.
+describe("line numbers", () => {
+  /** The line each `// @N` marker is on, by N. */
+  function markerLines(code) {
+    const lines = code.split(/\r\n|[\n\r\u2028\u2029]/);
+    return Object.fromEntries(
+      lines.flatMap((line, i) =>
+        [...line.matchAll(/\/\/ @(\d+)/g)].map((m) => [m[1], i + 1]),
+      ),
+    );
+  }
+
+  // Markers sit outside the function that is replaced, since its comments go
+  // with it.
+  it.for([
+    [
+      "a function body over several lines",
+      `// @1
+createWorkerPool(() => {
+  return import("./worker");
+}); // @2
+const after = 1; // @3`,
+    ],
+    [
+      "a function expression over several lines, with a config",
+      `createWorkerPool(function () {
+  // removed with the function
+  return import(
+    "./worker"
+  );
+}, { // @1
+  workers: 2, // @2
+}); // @3
+// @4`,
+    ],
+    [
+      "a config in a variable, over several lines",
+      `createWorkerPool( // @1
+  () =>
+    import("./worker"),
+  config, // @2
+); // @3`,
+    ],
+    [
+      "several calls",
+      `const a = createWorkerPool(() => {
+  return import("./worker");
+}); // @1
+const b = createWorkerPool(() => import("./worker")); // @2
+const c = createWorkerPool(async () =>
+  import("./worker"), {}); // @3
+const d = 3; // @4`,
+    ],
+    [
+      "Windows line breaks",
+      `createWorkerPool(() => {\r\n  return import("./worker");\r\n}); // @1\r\nconst after = 1; // @2`,
+    ],
+  ])("stay the same with %s", async ([, body]) => {
+    const source = header + body;
+    const { code } = await rewrite(source);
+
+    expect(code).not.toContain("import(");
+    expect(Object.keys(markerLines(source)).length).toBeGreaterThan(1);
+    expect(markerLines(code)).toEqual(markerLines(source));
+  });
+
+  it("a multi-line call still runs a pool with spawn", async () => {
+    const { code } = await rewrite(
+      `${header}createWorkerPool(() => {\n  return import("./worker");\n}, {\n  workers: 2,\n});`,
+    );
+    const [args, ...more] = poolCalls(code);
+
+    expect(more).toEqual([]);
+    expect(args[0]).toBeUndefined();
+    expect(args[1]).toEqual({ workers: 2, spawn: expect.any(Function) });
+    expect(spawned(args)).toEqual(WORKER);
   });
 });
